@@ -8,7 +8,7 @@ Built with React, Hono.js, oRPC, Better-Auth, and Module Federation.
 
 1. `bun install` - Install dependencies
 2. `bun db:migrate` - Run database migrations
-3. `bun dev` - Start all development servers
+3. `bun start` - Start all development servers
 
 ## Architecture
 

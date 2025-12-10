@@ -16,7 +16,7 @@
     "build:host": "bun --filter host build",
     "build:ui": "bun --filter marketplace_ui build",
     "deploy": "bun --filter marketplace_ui build && bun --filter marketplace-api build",
-    "start": "bun run --filter host preview",
+    "start": "bun run --filter host build && bun run --filter host preview",
     "check-types": "bun --filter '*' check-types",
     "db:push": "bun --filter host db:push",
     "db:studio": "bun --filter host db:studio",
