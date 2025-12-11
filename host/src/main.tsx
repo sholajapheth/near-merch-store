@@ -8,16 +8,37 @@ import {
   type ReactNode,
   useCallback,
 } from 'react';
-import { loadRemote } from '@module-federation/runtime';
+import { loadRemote, createInstance } from '@module-federation/runtime';
 import { ErrorBoundary } from './error-boundary';
 import { LoadingFallback } from './loading-fallback';
-import remotesConfig from '../remotes.json';
+import { loadBosConfig } from './config';
 
-const [primaryRemoteName] = Object.keys(remotesConfig.remotes);
+let remoteInitialized = false;
+let hostTitle = '';
+let remoteName = '';
 
 const RemoteApp = lazy(async () => {
-  const module = await loadRemote<{ default: FC }>(`${primaryRemoteName}/App`);
-  if (!module) throw new Error(`Failed to load ${primaryRemoteName}/App`);
+  if (!remoteInitialized) {
+    const config = await loadBosConfig();
+    
+    hostTitle = config.title;
+    remoteName = config.ui.name;
+    
+    createInstance({
+      name: 'host',
+      remotes: [
+        {
+          name: config.ui.name,
+          entry: `${config.ui.url}/remoteEntry.js`,
+        },
+      ],
+    });
+    
+    remoteInitialized = true;
+  }
+
+  const module = await loadRemote<{ default: FC }>(`${remoteName}/App`);
+  if (!module) throw new Error(`Failed to load ${remoteName}/App`);
   return module;
 });
 
@@ -60,8 +81,6 @@ const LoadedMarker: FC<{ onLoad: () => void }> = ({ onLoad }) => {
   return null;
 };
 
-const HOST_TITLE = remotesConfig.title || 'App';
-
 export const Main: FC = () => {
   const [ready, setReady] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -72,12 +91,14 @@ export const Main: FC = () => {
   }, []);
 
   useEffect(() => {
-    document.title = HOST_TITLE;
+    loadBosConfig().then((config) => {
+      document.title = config.title;
+    });
 
     const handleTitleChange = (event: CustomEvent<{ title: string }>) => {
       const remoteTitle = event.detail?.title;
-      if (remoteTitle) {
-        document.title = `${HOST_TITLE} | ${remoteTitle}`;
+      if (remoteTitle && hostTitle) {
+        document.title = `${hostTitle} | ${remoteTitle}`;
       }
     };
 

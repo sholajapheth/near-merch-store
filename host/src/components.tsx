@@ -12,7 +12,7 @@ import { loadRemote } from '@module-federation/runtime';
 import { ErrorBoundary } from './error-boundary';
 import { LoadingFallback } from './loading-fallback';
 import { FadeIn } from './fade-in';
-import remotesConfig from '../remotes.json';
+import { loadBosConfig } from './config';
 
 interface RegistryItem {
   name: string;
@@ -33,17 +33,21 @@ interface Registry {
   items: RegistryItem[];
 }
 
-const [primaryRemoteName] = Object.keys(remotesConfig.remotes);
-const primaryRemote =
-  remotesConfig.remotes[
-    primaryRemoteName as keyof typeof remotesConfig.remotes
-  ];
+let runtimeConfig: Awaited<ReturnType<typeof loadBosConfig>> | null = null;
+
+const getConfig = async () => {
+  if (!runtimeConfig) {
+    runtimeConfig = await loadBosConfig();
+  }
+  return runtimeConfig;
+};
 
 const SocialProvider = lazy(async () => {
+  const config = await getConfig();
   const module = await loadRemote<{
     SocialProvider: FC<{ network: string; children: React.ReactNode }>;
-  }>(`${primaryRemoteName}/providers`);
-  if (!module) throw new Error(`Failed to load ${primaryRemoteName}/providers`);
+  }>(`${config.ui.name}/providers`);
+  if (!module) throw new Error(`Failed to load ${config.ui.name}/providers`);
   return { default: module.SocialProvider };
 });
 
@@ -283,12 +287,13 @@ const gridStyle: CSSProperties = {
 
 const createLazyComponent = (componentName: string) => {
   return lazy(async () => {
+    const config = await getConfig();
     const module = await loadRemote<
       Record<string, ComponentType<Record<string, unknown>>>
-    >(`${primaryRemoteName}/components`);
+    >(`${config.ui.name}/components`);
     if (!module || !module[componentName]) {
       throw new Error(
-        `Component ${componentName} not found in ${primaryRemoteName}/components`
+        `Component ${componentName} not found in ${config.ui.name}/components`
       );
     }
     return { default: module[componentName] };
@@ -299,6 +304,7 @@ export const Components: FC = () => {
   const [ready, setReady] = useState(false);
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [registryError, setRegistryError] = useState<string | null>(null);
+  const [config, setConfig] = useState<Awaited<ReturnType<typeof loadBosConfig>> | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setReady(true), 50);
@@ -306,11 +312,17 @@ export const Components: FC = () => {
   }, []);
 
   useEffect(() => {
+    getConfig().then(setConfig);
+  }, []);
+
+  useEffect(() => {
     const fetchRegistry = async () => {
+      if (!config) return;
+
       try {
-        const remoteUrl = primaryRemote.url;
+        const remoteUrl = config.ui.url;
         const baseUrl = remoteUrl.replace(/\/remoteEntry\.js$/, '');
-        const registryUrl = `${baseUrl}${primaryRemote.registryPath || '/r/registry.json'}`;
+        const registryUrl = `${baseUrl}/r/registry.json`;
 
         const response = await fetch(registryUrl);
         if (!response.ok)
@@ -324,7 +336,7 @@ export const Components: FC = () => {
     };
 
     fetchRegistry();
-  }, []);
+  }, [config]);
 
   const componentEntries = useMemo(() => {
     if (!registry) return [];
@@ -369,7 +381,7 @@ export const Components: FC = () => {
                     <p style={subtitleStyle}>
                       Remote components from{' '}
                       <code style={codeStyle}>
-                        {primaryRemote.displayName || primaryRemoteName}
+                        {config?.ui.name || 'Loading...'}
                       </code>
                     </p>
                   </header>

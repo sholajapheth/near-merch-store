@@ -1,0 +1,41 @@
+{
+  "account": "near-merch-store.near",
+  "app": {
+    "host": {
+      "title": "Near Merch",
+      "development": "http://localhost:3001",
+      "production": "https://everything.market"
+    },
+    "ui": {
+      "name": "marketplace_ui",
+      "development": "http://localhost:3000",
+      "production": "https://elliot-braem-1105-marketplace-ui-near-merch-store-c16985757-ze.zephyrcloud.app",
+      "exposes": {
+        "App": "./App",
+        "components": "./components",
+        "providers": "./providers",
+        "types": "./types"
+      }
+    },
+    "api": {
+      "plugins": {
+        "marketplace-api": {
+          "development": "http://localhost:3014/remoteEntry.js",
+          "production": "https://elliot-braem-1102-marketplace-api-near-merch-stor-81c02665f-ze.zephyrcloud.app",
+          "variables": {
+            "network": "mainnet",
+            "contractId": "social.near"
+          },
+          "secrets": {
+            "RELAYER_ACCOUNT_ID": "{{RELAYER_ACCOUNT_ID}}",
+            "RELAYER_PRIVATE_KEY": "{{RELAYER_PRIVATE_KEY}}",
+            "STRIPE_SECRET_KEY": "{{STRIPE_SECRET_KEY}}",
+            "STRIPE_WEBHOOK_SECRET": "{{STRIPE_WEBHOOK_SECRET}}",
+            "GELATO_API_KEY": "{{GELATO_API_KEY}}",
+            "GELATO_WEBHOOK_SECRET": "{{GELATO_WEBHOOK_SECRET}}"
+          }
+        }
+      }
+    }
+  }
+}
