@@ -9,7 +9,7 @@
     "ui": {
       "name": "marketplace_ui",
       "development": "http://localhost:3002",
-      "production": "https://elliot-braem-1131-marketplace-ui-near-merch-store-c57e33ce6-ze.zephyrcloud.app",
+      "production": "https://elliot-braem-1132-marketplace-ui-near-merch-store-85d382bbc-ze.zephyrcloud.app",
       "exposes": {
         "App": "./App",
         "components": "./components",
@@ -31,8 +31,7 @@
             "RELAYER_PRIVATE_KEY": "{{RELAYER_PRIVATE_KEY}}",
             "STRIPE_SECRET_KEY": "{{STRIPE_SECRET_KEY}}",
             "STRIPE_WEBHOOK_SECRET": "{{STRIPE_WEBHOOK_SECRET}}",
-            "GELATO_API_KEY": "{{GELATO_API_KEY}}",
-            "GELATO_WEBHOOK_SECRET": "{{GELATO_WEBHOOK_SECRET}}"
+            "PRINTFUL_API_KEY": "{{PRINTFUL_API_KEY}}"
           }
         }
       }

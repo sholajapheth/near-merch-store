@@ -10,7 +10,7 @@
     "dev": "turbo dev",
     "dev:ui": "USE_REMOTE_API=true turbo dev --filter=host --filter=marketplace_ui",
     "dev:api": "USE_REMOTE_UI=true turbo dev --filter=host --filter=marketplace-api",
-    "preview": "turbo preview --filter=host",
+    "start": "turbo preview --filter=host",
     "build": "turbo build",
     "build:api": "turbo build --filter=marketplace-api",
     "build:host": "turbo build --filter=host",
