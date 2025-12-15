@@ -15,9 +15,6 @@ export function MarketplaceFooter() {
                 className="h-8 w-auto object-contain dark:invert"
               />
             </div>
-            <p className="text-muted-foreground text-sm">
-              Building the future of blockchain technology, one block at a time.
-            </p>
           </div>
           {/* HIDDEN: Collections in footer - uncomment to restore */}
           {/* <div>

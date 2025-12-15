@@ -1,45 +1,46 @@
-import { useState, useEffect, useRef } from "react";
-import { createFileRoute, /* Link, */ useRouter } from "@tanstack/react-router"; // HIDDEN: Link for collections
+import manOnNearImage from "@/assets/images/pngs/man_on_near.png";
+import { LoadingSpinner } from "@/components/loading";
+import { CartSidebar } from "@/components/marketplace/cart-sidebar";
+import { ProductCard } from "@/components/marketplace/product-card";
+import { SizeSelectionModal } from "@/components/marketplace/size-selection-modal";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/use-cart";
+import { useFavorites } from "@/hooks/use-favorites";
+import {
+  // useSuspenseCollections, // HIDDEN: Collections feature
+  productLoaders,
+  useSuspenseFeaturedProducts,
+  type Product
+} from "@/integrations/marketplace-api";
+import { queryClient } from "@/utils/orpc";
+import {
+  createFileRoute,
+    /* Link, */ useRouter
+} from "@tanstack/react-router"; // HIDDEN: Link for collections
 import {
   // ArrowRight, // HIDDEN: Collections feature
   AlertCircle,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ProductCard } from "@/components/marketplace/product-card";
-import { LoadingSpinner } from "@/components/loading";
-import { SizeSelectionModal } from "@/components/marketplace/size-selection-modal";
-import { CartSidebar } from "@/components/marketplace/cart-sidebar";
-import { useCart } from "@/hooks/use-cart";
-import { useFavorites } from "@/hooks/use-favorites";
-import {
-  useSuspenseFeaturedProducts,
-  // useSuspenseCollections, // HIDDEN: Collections feature
-  productLoaders,
-  // collectionLoaders, // HIDDEN: Collections feature
-  type ProductCategory,
-  type Product,
-} from "@/integrations/marketplace-api";
-import { queryClient } from "@/utils/orpc";
-import manOnNearImage from "@/assets/images/pngs/man_on_near.png";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/_marketplace/")({
   pendingComponent: LoadingSpinner,
   loader: async () => {
     await queryClient.ensureQueryData(productLoaders.featured(8));
 
-// HIDDEN: Collections feature
-//     const listData = await queryClient.ensureQueryData(
-//       collectionLoaders.list()
-//     );
+    // HIDDEN: Collections feature
+    //     const listData = await queryClient.ensureQueryData(
+    //       collectionLoaders.list()
+    //     );
 
-//     // Prefetch collection details so product counts can be derived from query cache.
-//     await Promise.all(
-//       listData.collections.map((c) =>
-//         queryClient.ensureQueryData(collectionLoaders.detail(c.slug))
-//       )
-//     );
+    //     // Prefetch collection details so product counts can be derived from query cache.
+    //     await Promise.all(
+    //       listData.collections.map((c) =>
+    //         queryClient.ensureQueryData(collectionLoaders.detail(c.slug))
+    //       )
+    //     );
   },
   errorComponent: ({ error }) => {
     const router = useRouter();
@@ -71,9 +72,7 @@ function MarketplaceHome() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<
-    ProductCategory | "All"
-  >("All");
+
   const [sizeModalProduct, setSizeModalProduct] = useState<Product | null>(
     null
   );
@@ -85,14 +84,6 @@ function MarketplaceHome() {
 
   const featuredProducts = featuredData.products;
   // const collections = collectionsData.collections; // HIDDEN: Collections feature
-
-  // Filter products by selected category
-  const filteredProducts =
-    selectedCategory === "All"
-      ? featuredProducts
-      : featuredProducts.filter(
-        (product) => product.category === selectedCategory
-      );
 
   const handleQuickAdd = (product: Product) => {
     setSizeModalProduct(product);
@@ -173,16 +164,18 @@ function MarketplaceHome() {
             {slides.map((slide, index) => (
               <div
                 key={index}
-                className={`w-full grid lg:grid-cols-2 gap-8 items-center ${index === currentSlide ? "block" : "hidden"
-                  }`}
+                className={`w-full grid lg:grid-cols-2 gap-8 items-center ${
+                  index === currentSlide ? "block" : "hidden"
+                }`}
               >
                 {/* Text Section with reveal animation */}
                 <div className="text-white space-y-6 z-10 overflow-hidden">
                   <div
-                    className={`inline-block bg-white/10 backdrop-blur-sm px-4 py-2 text-sm text-white/80 mb-4 uppercase font-bold transition-all duration-700 ease-out ${!isAnimating
-                      ? "translate-y-0 opacity-100"
-                      : "-translate-y-full opacity-0"
-                      }`}
+                    className={`inline-block bg-white/10 backdrop-blur-sm px-4 py-2 text-sm text-white/80 mb-4 uppercase font-bold transition-all duration-700 ease-out ${
+                      !isAnimating
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-full opacity-0"
+                    }`}
                     style={{
                       transitionTimingFunction:
                         "cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -191,10 +184,11 @@ function MarketplaceHome() {
                     {slide.badge}
                   </div>
                   <h1
-                    className={`text-4xl md:text-5xl lg:text-7xl font-bold transition-all duration-800 ease-out ${!isAnimating
-                      ? "translate-y-0 opacity-100"
-                      : "-translate-y-full opacity-0"
-                      }`}
+                    className={`text-4xl md:text-5xl lg:text-7xl font-bold transition-all duration-800 ease-out ${
+                      !isAnimating
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-full opacity-0"
+                    }`}
                     style={{
                       transitionTimingFunction:
                         "cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -203,13 +197,16 @@ function MarketplaceHome() {
                   >
                     {slide.title}
                     <br />
-                    <span className="text-3xl md:text-5xl lg:text-6xl">{slide.subtitle}</span>
+                    <span className="text-3xl md:text-5xl lg:text-6xl">
+                      {slide.subtitle}
+                    </span>
                   </h1>
                   <p
-                    className={`text-lg md:text-xl text-white/80 my-8 transition-all duration-800 ease-out ${!isAnimating
-                      ? "translate-y-0 opacity-100"
-                      : "-translate-y-full opacity-0"
-                      }`}
+                    className={`text-lg md:text-xl text-white/80 my-8 transition-all duration-800 ease-out ${
+                      !isAnimating
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-full opacity-0"
+                    }`}
                     style={{
                       transitionTimingFunction:
                         "cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -219,23 +216,17 @@ function MarketplaceHome() {
                     {slide.description}
                   </p>
                   <div
-                    className={`flex flex-wrap gap-4 transition-all duration-800 ease-out ${!isAnimating
-                      ? "translate-y-0 opacity-100"
-                      : "translate-y-full opacity-0"
-                      }`}
+                    className={`flex flex-wrap gap-4 transition-all duration-800 ease-out ${
+                      !isAnimating
+                        ? "translate-y-0 opacity-100"
+                        : "translate-y-full opacity-0"
+                    }`}
                     style={{
                       transitionTimingFunction:
                         "cubic-bezier(0.34, 1.56, 0.64, 1)",
                       transitionDelay: "0.3s",
                     }}
-                  >
-
-                    <Link to="/collections">
-                      <button className="bg-white text-black px-8 py-3 hover:bg-white/90 transition-colors flex items-center font-medium rounded-none tracking-[-0.48px]">
-                        {slide.buttonText}
-                      </button>
-                    </Link>
-                  </div>
+                  ></div>
                 </div>
 
                 {/* Image Section with zoom animation */}
@@ -243,10 +234,11 @@ function MarketplaceHome() {
                   <div className="relative w-full h-full flex items-end justify-end overflow-hidden">
                     {/* Large glowing orb with fill animation */}
                     <div
-                      className={`absolute top-0 right-1/3 -translate-y-1/4 rounded-full bg-[#00ec97] blur-[120px] transition-all duration-800 ease-out ${!isAnimating
-                        ? "w-[500px] h-[500px] opacity-30"
-                        : "w-0 h-0 opacity-0"
-                        }`}
+                      className={`absolute top-0 right-1/3 -translate-y-1/4 rounded-full bg-[#00ec97] blur-[120px] transition-all duration-800 ease-out ${
+                        !isAnimating
+                          ? "w-[500px] h-[500px] opacity-30"
+                          : "w-0 h-0 opacity-0"
+                      }`}
                       style={{
                         transitionTimingFunction:
                           "cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -255,10 +247,11 @@ function MarketplaceHome() {
 
                     {/* Main image with zoom animation */}
                     <div
-                      className={`relative z-10 transition-all duration-800 ease-out ${!isAnimating
-                        ? "scale-100 opacity-100"
-                        : "scale-75 opacity-0"
-                        }`}
+                      className={`relative z-10 transition-all duration-800 ease-out ${
+                        !isAnimating
+                          ? "scale-100 opacity-100"
+                          : "scale-75 opacity-0"
+                      }`}
                       style={{
                         transitionTimingFunction:
                           "cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -299,7 +292,10 @@ function MarketplaceHome() {
               className="group flex items-center justify-center w-12 h-12 rounded-full border border-white/20 bg-black/20 backdrop-blur-md hover:bg-white hover:text-black hover:border-white transition-all duration-300 cursor-pointer"
               aria-label="Previous"
             >
-              <ChevronLeft className="h-5 w-5 text-white group-hover:text-black transition-colors" aria-hidden="true" />
+              <ChevronLeft
+                className="h-5 w-5 text-white group-hover:text-black transition-colors"
+                aria-hidden="true"
+              />
             </button>
             <button
               onClick={nextSlide}
@@ -307,7 +303,10 @@ function MarketplaceHome() {
               className="group flex items-center justify-center w-12 h-12 rounded-full border border-white/20 bg-black/20 backdrop-blur-md hover:bg-white hover:text-black hover:border-white transition-all duration-300 cursor-pointer"
               aria-label="Next"
             >
-              <ChevronRight className="h-5 w-5 text-white group-hover:text-black transition-colors" aria-hidden="true" />
+              <ChevronRight
+                className="h-5 w-5 text-white group-hover:text-black transition-colors"
+                aria-hidden="true"
+              />
             </button>
           </div>
         </div>
@@ -378,42 +377,10 @@ function MarketplaceHome() {
 
       {/* == Products Section == */}
 
-      <section
-        className="py-16 md:py-20 border-t border-border"
-        id="products"
-      >
+      <section className="py-16 md:py-20 border-t border-border" id="products">
         <div className="max-w-[1408px] mx-auto px-4 md:px-8 lg:px-16">
-          <div className="flex flex-wrap gap-2 justify-center mb-12">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory("All")}
-              className={
-                selectedCategory === "All"
-                  ? "px-4 py-2 border transition-colors bg-primary text-primary-foreground border-primary"
-                  : "px-4 py-2 border transition-colors bg-background text-foreground border-border hover:border-primary"
-              }
-            >
-              All
-            </button>
-            {(
-              ["Men", "Women", "Exclusives", "Accessories"] as ProductCategory[]
-            ).map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setSelectedCategory(category)}
-                className={
-                  selectedCategory === category
-                    ? "px-4 py-2 border transition-colors bg-primary text-primary-foreground border-primary"
-                    : "px-4 py-2 border transition-colors bg-background text-foreground border-border hover:border-primary"
-                }
-              >
-                {category}
-              </button>
-            ))}
-          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
+            {featuredProducts?.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
