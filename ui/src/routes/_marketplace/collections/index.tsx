@@ -21,7 +21,7 @@ export const Route = createFileRoute('/_marketplace/collections/')({
   },
   errorComponent: ({ error }) => {
     const router = useRouter();
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-4">
@@ -36,8 +36,8 @@ export const Route = createFileRoute('/_marketplace/collections/')({
             <Button onClick={() => router.invalidate()}>
               Try Again
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.navigate({ to: '/' })}
             >
               Go Home
@@ -55,12 +55,12 @@ function CollectionsPage() {
   const collections = collectionsData.collections;
 
   return (
-    <div className="bg-white w-full">
-      <div className="bg-[rgba(236,236,240,0.3)] border-b border-[rgba(0,0,0,0.1)] py-24">
+    <div className="bg-background w-full">
+      <div className="bg-muted/30 border-b border-border py-24">
         <div className="max-w-[1408px] mx-auto px-4 md:px-8 lg:px-16">
           <div className="text-center space-y-6">
             <h1 className="text-2xl md:text-3xl font-medium tracking-[-0.48px]">Our Collections</h1>
-            <p className="text-[#717182] text-lg leading-7 tracking-[-0.48px] max-w-[723px] mx-auto">
+            <p className="text-muted-foreground text-lg leading-7 tracking-[-0.48px] max-w-[723px] mx-auto">
               Discover premium NEAR Protocol merchandise across four curated collections. Each piece is designed with quality and sustainability in mind.
             </p>
           </div>
@@ -83,7 +83,7 @@ function CollectionsPage() {
                 key={collection.slug}
                 to="/collections/$collection"
                 params={{ collection: collection.slug }}
-                className="border border-[rgba(0,0,0,0.1)] overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
+                className="border border-border overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
               >
                 <div className="bg-[#ececf0] h-[400px] md:h-[517.5px] overflow-hidden">
                   <img
@@ -92,7 +92,7 @@ function CollectionsPage() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="border-t border-[rgba(0,0,0,0.1)] p-6 space-y-3">
+                <div className="border-t border-border p-6 space-y-3">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-medium tracking-[-0.48px]">{collection.name}</h3>
                     {collection.badge && (
@@ -119,16 +119,16 @@ function CollectionsPage() {
         </div>
       </div>
 
-      <div className="bg-[rgba(236,236,240,0.3)] border-t border-[rgba(0,0,0,0.1)] py-16">
+      <div className="bg-muted/30 border-t border-border py-16">
         <div className="max-w-[672px] mx-auto px-4 text-center space-y-10">
           <div className="space-y-4">
             <h2 className="text-xl font-medium tracking-[-0.48px]">Can't decide?</h2>
-            <p className="text-[#717182] tracking-[-0.48px]">
+            <p className="text-muted-foreground tracking-[-0.48px]">
               Browse our entire collection and find the perfect piece for you.
             </p>
           </div>
           <Link to="/search">
-            <Button variant="outline" className="border-[rgba(0,0,0,0.1)]">
+            <Button variant="outline" className="border-border">
               View All Products
             </Button>
           </Link>
