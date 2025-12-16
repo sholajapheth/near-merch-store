@@ -27,7 +27,6 @@ function LoginPage() {
   const { redirect } = Route.useSearch();
 
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
-  const [isSigningInWithNear, setIsSigningInWithNear] = useState(false);
   const [isDisconnectingWallet, setIsDisconnectingWallet] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
   const [isSigningInWithGitHub, setIsSigningInWithGitHub] = useState(false);
@@ -37,12 +36,58 @@ function LoginPage() {
   const handleWalletConnect = async () => {
     setIsConnectingWallet(true);
     try {
+      // First, request sign in (connect wallet)
       await authClient.requestSignIn.near(
         { recipient: "marketplace-demo.near" },
         {
-          onSuccess: () => {
-            setIsConnectingWallet(false);
-            toast.success("Wallet connected");
+          onSuccess: async () => {
+            // After wallet is connected, automatically sign in
+            // Small delay to ensure accountId is available
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            try {
+              const currentAccountId = authClient.near.getAccountId();
+              if (!currentAccountId) {
+                setIsConnectingWallet(false);
+                toast.error(
+                  "Wallet connected but account ID not available. Please try again."
+                );
+                return;
+              }
+
+              await authClient.signIn.near(
+                { recipient: "marketplace-demo.near" },
+                {
+                  onSuccess: () => {
+                    setIsConnectingWallet(false);
+                    queryClient.invalidateQueries();
+                    navigate({ to: redirect ?? "/account", replace: true });
+                    toast.success(
+                      `Signed in as: ${authClient.near.getAccountId()}`
+                    );
+                  },
+                  onError: (error: any) => {
+                    setIsConnectingWallet(false);
+                    console.error("NEAR sign in error:", error);
+
+                    if ((error as any)?.code === "NONCE_NOT_FOUND") {
+                      toast.error("Session expired. Please try again.");
+                      return;
+                    }
+
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Authentication failed"
+                    );
+                  },
+                }
+              );
+            } catch (error) {
+              setIsConnectingWallet(false);
+              console.error("NEAR sign in error:", error);
+              toast.error("Authentication failed");
+            }
           },
           onError: (error: any) => {
             setIsConnectingWallet(false);
@@ -59,48 +104,6 @@ function LoginPage() {
       setIsConnectingWallet(false);
       console.error("Wallet connection error:", error);
       toast.error("Failed to connect to NEAR wallet");
-    }
-  };
-
-  const handleNearSignIn = async () => {
-    setIsSigningInWithNear(true);
-    try {
-      await authClient.signIn.near(
-        { recipient: "marketplace-demo.near" },
-        {
-          onSuccess: () => {
-            setIsSigningInWithNear(false);
-            queryClient.invalidateQueries();
-            navigate({ to: redirect ?? "/account", replace: true });
-            toast.success(`Signed in as: ${accountId}`);
-          },
-          onError: (error: any) => {
-            setIsSigningInWithNear(false);
-            console.error("NEAR sign in error:", error);
-
-            if ((error as any)?.code === "NONCE_NOT_FOUND") {
-              toast.error("Session expired. Please reconnect your wallet.");
-              handleWalletDisconnect();
-              return;
-            }
-
-            toast.error(
-              error instanceof Error ? error.message : "Authentication failed"
-            );
-          },
-        }
-      );
-    } catch (error) {
-      setIsSigningInWithNear(false);
-      console.error("NEAR sign in error:", error);
-
-      if ((error as any)?.code === "NONCE_NOT_FOUND") {
-        toast.error("Session expired. Please reconnect your wallet.");
-        handleWalletDisconnect();
-        return;
-      }
-
-      toast.error("Authentication failed");
     }
   };
 
@@ -155,7 +158,6 @@ function LoginPage() {
 
   const isLoading =
     isConnectingWallet ||
-    isSigningInWithNear ||
     isDisconnectingWallet ||
     isSigningInWithGoogle ||
     isSigningInWithGitHub;
@@ -188,36 +190,29 @@ function LoginPage() {
                 <img
                   src={nearLogo}
                   alt="NEAR"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain invert dark:invert-0"
                 />
               </div>
               <span className="text-sm">
                 {isConnectingWallet
-                  ? "Connecting Wallet..."
+                  ? "Connecting & Signing in..."
                   : "Connect NEAR Wallet"}
               </span>
             </button>
           ) : (
             <div className="space-y-3">
-              <button
-                onClick={handleNearSignIn}
-                disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground border-2 border-primary px-6 py-5 flex items-center justify-center gap-3 hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                <div className="size-6 flex items-center justify-center">
-                  <svg className="size-6" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 2L2 7v10l10 5 10-5V7L12 2z"
-                      fill="currentColor"
-                    />
-                  </svg>
+              <div className="w-full bg-primary/10 border-2 border-primary px-6 py-5 flex items-center justify-center gap-3">
+                <div className="size-6 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={nearLogo}
+                    alt="NEAR"
+                    className="w-full h-full object-contain invert dark:invert-0"
+                  />
                 </div>
-                <span className="text-sm">
-                  {isSigningInWithNear
-                    ? "Signing in..."
-                    : `Sign in with NEAR (${accountId})`}
+                <span className="text-sm text-foreground">
+                  Connected: {accountId}
                 </span>
-              </button>
+              </div>
               <button
                 onClick={handleWalletDisconnect}
                 disabled={isLoading}
