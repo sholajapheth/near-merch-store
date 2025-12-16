@@ -3,7 +3,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { queryClient } from "@/utils/orpc";
-import logoFull from "@/assets/logo_full.png";
+import nearLogo from "@/assets/images/pngs/logo_sq.png";
 
 type SearchParams = {
   redirect?: string;
@@ -163,12 +163,18 @@ function LoginPage() {
   return (
     <div className="bg-background min-h-screen w-full flex items-center justify-center py-16 px-4">
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-12">
-          <img
-            src={logoFull}
-            alt="NEAR"
-            className="h-8 md:h-12 w-auto object-contain dark:invert"
-          />
+        <div className="text-center mb-12">
+          <p className="text-sm text-muted-foreground">
+            Don't have a NEAR wallet?{" "}
+            <a
+              href="https://wallet.near.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Create one here
+            </a>
+          </p>
         </div>
 
         <div className="mb-4">
@@ -178,13 +184,12 @@ function LoginPage() {
               disabled={isLoading}
               className="w-full bg-primary text-primary-foreground border-2 border-primary px-6 py-5 flex items-center justify-center gap-3 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <div className="size-6 flex items-center justify-center">
-                <svg className="size-6" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 2L2 7v10l10 5 10-5V7L12 2z"
-                    fill="currentColor"
-                  />
-                </svg>
+              <div className="size-6 overflow-hidden flex items-center justify-center">
+                <img
+                  src={nearLogo}
+                  alt="NEAR"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="text-sm">
                 {isConnectingWallet
