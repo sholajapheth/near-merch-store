@@ -40,16 +40,21 @@ function transformProviderProduct(
   providerName: string,
   product: ProviderProduct
 ): ProductWithImages {
+  const firstVariantWithDesigns = product.variants.find(v => v.designFiles?.length);
+  const designFiles = firstVariantWithDesigns?.designFiles || [];
+
+  const imageMap = new Map<string, ProductImage>();
   const images: ProductImage[] = [];
   const seenUrls = new Set<string>();
   const thumbnailUrl = product.thumbnailUrl;
 
   if (thumbnailUrl) {
-    images.push({
+    imageMap.set(thumbnailUrl, {
       id: `catalog-${product.sourceId}`,
       url: thumbnailUrl,
       type: 'catalog',
       order: 0,
+      variantIds: [], // Thumbnail is not variant-specific
     });
     seenUrls.add(thumbnailUrl);
   }
@@ -70,6 +75,36 @@ function transformProviderProduct(
       });
     }
   }
+
+  let imageOrder = 1;
+  for (const variant of product.variants) {
+    const variantId = `${providerName}-variant-${variant.id}`;
+
+    if (!variant.files) continue;
+    for (const file of variant.files) {
+      const url = file.previewUrl || file.url;
+      if (!url) continue;
+
+      if (!imageMap.has(url)) {
+        imageMap.set(url, {
+          id: `file-${file.id}-${variant.id}`,
+          url,
+          type: file.type === 'preview' ? 'preview' : 'detail',
+          placement: file.type !== 'preview' && file.type !== 'default' ? file.type : undefined,
+          order: imageOrder++,
+          variantIds: [variantId],
+        });
+      } else {
+        const img = imageMap.get(url)!;
+        if (!img.variantIds) img.variantIds = [];
+        if (!img.variantIds.includes(variantId)) {
+          img.variantIds.push(variantId);
+        }
+      }
+    }
+  }
+
+  const images = Array.from(imageMap.values()).sort((a, b) => a.order - b.order);
 
   // Extract unique options from all variants
   const optionsMap = new Map<string, Set<string>>();
@@ -100,10 +135,10 @@ function transformProviderProduct(
 
   const variants: ProductVariantInput[] = product.variants.map((variant) => {
     const variantId = String(variant.id);
+
     const fulfillmentConfig: FulfillmentConfig = {
       externalVariantId: variantId,
       externalProductId: String(product.sourceId),
-      designFiles: variant.designFiles || [],
       providerData: providerName === 'printful'
         ? {
           catalogVariantId: variant.catalogVariantId,
@@ -139,8 +174,9 @@ function transformProviderProduct(
     category: 'Exclusives',
     options,
     images,
-    primaryImage: thumbnailUrl,
+    thumbnailImage: thumbnailUrl,
     variants,
+    designFiles,
     fulfillmentProvider: providerName,
     externalProductId: String(product.sourceId),
     source: providerName,
