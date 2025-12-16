@@ -15,12 +15,26 @@ import { initializePlugins } from './src/runtime';
 import { loadBosConfig } from './src/config';
 import { createRouter } from './src/routers';
 import { auth } from './src/lib/auth';
+import { db } from './src/db';
+import * as schema from './src/db/schema/auth';
+import { eq } from 'drizzle-orm';
 
 async function createContext(req: Request) {
   const session = await auth.api.getSession({ headers: req.headers });
+
+  // Get NEAR account ID from linked accounts
+  let nearAccountId: string | null = null;
+  if (session?.user?.id) {
+    const nearAccount = await db.query.nearAccount.findFirst({
+      where: eq(schema.nearAccount.userId, session.user.id),
+    });
+    nearAccountId = nearAccount?.accountId ?? null;
+  }
+
   return {
     session,
     user: session?.user,
+    nearAccountId,
   };
 }
 

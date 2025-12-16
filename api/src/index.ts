@@ -189,7 +189,11 @@ export default createPlugin({
         );
       }),
 
-      createCheckout: builder.createCheckout.handler(async ({ input }) => {
+      createCheckout: builder.createCheckout.handler(async ({ input, context }) => {
+        if (!context?.nearAccountId) {
+          throw new Error('NEAR account required for checkout');
+        }
+
         if (!stripeService) {
           throw new Error('Stripe is not configured');
         }
@@ -207,14 +211,14 @@ export default createPlugin({
         );
         const product = productResult.product;
 
-        const selectedVariant = firstItem.variantId 
+        const selectedVariant = firstItem.variantId
           ? product.variants.find(v => v.id === firstItem.variantId)
           : product.variants[0];
-        
+
         const unitPrice = selectedVariant?.price ?? product.price;
         const currency = selectedVariant?.currency ?? product.currency ?? 'USD';
 
-        const userId = 'demo-user';
+        const userId = context.nearAccountId;
         const totalAmount = unitPrice * firstItem.quantity;
 
         const order = await Effect.runPromise(
