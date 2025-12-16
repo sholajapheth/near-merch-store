@@ -168,6 +168,10 @@ function LoginPage() {
   // The Google OAuth client ID should be configured in the auth client configuration
   const handleSignInWithGoogle = async () => {
     setIsSigningInWithGoogle(true);
+    // Store redirectUrl in sessionStorage before OAuth redirect
+    if (redirectUrl && typeof window !== "undefined") {
+      sessionStorage.setItem("redirectUrl", redirectUrl);
+    }
     try {
       const finalRedirect = redirect || "/account";
       await authClient.signIn.social({
@@ -185,6 +189,10 @@ function LoginPage() {
   // The GitHub OAuth client ID should be configured in the auth client configuration
   const handleSignInWithGithub = async () => {
     setIsSigningInWithGitHub(true);
+    // Store redirectUrl in sessionStorage before OAuth redirect
+    if (redirectUrl && typeof window !== "undefined") {
+      sessionStorage.setItem("redirectUrl", redirectUrl);
+    }
     try {
       const finalRedirect = redirect || "/account";
       await authClient.signIn.social({
