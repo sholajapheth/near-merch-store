@@ -1,15 +1,22 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { queryClient } from "@/utils/orpc";
+import logoFull from "@/assets/logo_full.png";
+
+type SearchParams = {
+  redirectUrl?: string;
+};
 
 export const Route = createFileRoute("/_marketplace/login")({
-  beforeLoad: async () => {
+  validateSearch: (search: Record<string, unknown>): SearchParams => ({
+    redirectUrl: typeof search.redirectUrl === 'string' ? search.redirectUrl : undefined,
+  }),
+  beforeLoad: async ({ search }) => {
     const { data: session } = await authClient.getSession();
     if (session?.user) {
-      throw redirect({ to: "/account" });
+      throw redirect({ to: search.redirectUrl || "/account" });
     }
   },
   component: LoginPage,
@@ -17,7 +24,28 @@ export const Route = createFileRoute("/_marketplace/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { redirectUrl: searchRedirectUrl } = Route.useSearch();
+  const { data: session } = authClient.useSession();
+
+  // Store redirectUrl in sessionStorage for OAuth flows, and get it from search params or sessionStorage
+  const redirectUrl = searchRedirectUrl || (typeof window !== 'undefined' ? sessionStorage.getItem('redirectUrl') : null);
+
+  // Store redirectUrl in sessionStorage if it exists in search params
+  useEffect(() => {
+    if (searchRedirectUrl && typeof window !== 'undefined') {
+      sessionStorage.setItem('redirectUrl', searchRedirectUrl);
+    }
+  }, [searchRedirectUrl]);
+
+  // Handle redirect after OAuth completes - check if user is logged in and redirect
+  useEffect(() => {
+    if (session?.user && redirectUrl) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('redirectUrl');
+      }
+      navigate({ to: redirectUrl, replace: true });
+    }
+  }, [session, redirectUrl, navigate]);
 
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [isSigningInWithNear, setIsSigningInWithNear] = useState(false);
@@ -63,7 +91,11 @@ function LoginPage() {
           onSuccess: () => {
             setIsSigningInWithNear(false);
             queryClient.invalidateQueries();
-            navigate({ to: "/account", replace: true });
+            const finalRedirectUrl = redirectUrl || "/account";
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('redirectUrl');
+            }
+            navigate({ to: finalRedirectUrl, replace: true });
             toast.success(`Signed in as: ${accountId}`);
           },
           onError: (error: any) => {
@@ -109,12 +141,19 @@ function LoginPage() {
     }
   };
 
+  // TODO: Add Google API key (Elliot)
+  // The Google OAuth client ID should be configured in the auth client configuration
   const handleSignInWithGoogle = async () => {
     setIsSigningInWithGoogle(true);
+    // Store redirectUrl in sessionStorage before OAuth redirect
+    if (redirectUrl && typeof window !== 'undefined') {
+      sessionStorage.setItem('redirectUrl', redirectUrl);
+    }
     try {
+      const finalRedirect = redirectUrl || "/account";
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: `${window.location.origin}/account`,
+        callbackURL: `${window.location.origin}/login?redirectUrl=${encodeURIComponent(finalRedirect)}`,
       });
     } catch (error) {
       setIsSigningInWithGoogle(false);
@@ -123,12 +162,19 @@ function LoginPage() {
     }
   };
 
+  // TODO: Add GitHub API key (Elliot)
+  // The GitHub OAuth client ID should be configured in the auth client configuration
   const handleSignInWithGithub = async () => {
     setIsSigningInWithGitHub(true);
+    // Store redirectUrl in sessionStorage before OAuth redirect
+    if (redirectUrl && typeof window !== 'undefined') {
+      sessionStorage.setItem('redirectUrl', redirectUrl);
+    }
     try {
+      const finalRedirect = redirectUrl || "/account";
       await authClient.signIn.social({
         provider: "github",
-        callbackURL: `${window.location.origin}/account`,
+        callbackURL: `${window.location.origin}/login?redirectUrl=${encodeURIComponent(finalRedirect)}`,
       });
     } catch (error) {
       setIsSigningInWithGitHub(false);
@@ -142,9 +188,12 @@ function LoginPage() {
   return (
     <div className="bg-background min-h-screen w-full flex items-center justify-center py-16 px-4">
       <div className="w-full max-w-md">
-        <div className="bg-muted px-4 py-4 text-center mb-12">
-          <h1 className="text-2xl mb-2">Welcome to the NEAR Merch Store!</h1>
-          <p className="text-muted-foreground">Create your account</p>
+        <div className="flex justify-center mb-12">
+          <img
+            src={logoFull}
+            alt="NEAR"
+            className="h-8 md:h-12 w-auto object-contain dark:invert"
+          />
         </div>
 
         <div className="mb-4">
@@ -229,52 +278,6 @@ function LoginPage() {
             </svg>
             <span className="text-sm">{isSigningInWithGitHub ? "Redirecting..." : "Sign in with GitHub"}</span>
           </button>
-        </div>
-
-        <div className="mb-6 border border-border">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full px-3 py-3 flex items-center justify-between hover:bg-muted transition-colors"
-          >
-            <span className="text-sm">Why connect a wallet?</span>
-            <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-          </button>
-
-          {isExpanded && (
-            <div className="px-4 pb-6 pt-2">
-              <p className="text-muted-foreground mb-4">
-                Connecting your NEAR wallet provides the fastest and most secure way to shop:
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#00ec97] text-sm">•</span>
-                  <span className="text-[#717182] text-sm">No need to remember passwords - your wallet is your login</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#00ec97] text-sm">•</span>
-                  <span className="text-[#717182] text-sm">Pay directly with crypto for instant transactions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#00ec97] text-sm">•</span>
-                  <span className="text-[#717182] text-sm">Access exclusive NFT drops and limited editions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#00ec97] text-sm">•</span>
-                  <span className="text-[#717182] text-sm">Your data stays private and under your control</span>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-muted px-4 py-4 text-center">
-          <p className="text-muted-foreground text-xs">🔒 Your information is secure and encrypted. We never share your data.</p>
-        </div>
-
-        <div className="text-center mt-6">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground underline transition-colors">
-            ← Back to store
-          </Link>
         </div>
       </div>
     </div>
