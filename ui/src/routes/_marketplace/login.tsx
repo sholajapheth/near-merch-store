@@ -204,13 +204,12 @@ function LoginPage() {
                 disabled={isLoading}
                 className="w-full bg-primary text-primary-foreground border-2 border-primary px-6 py-5 flex items-center justify-center gap-3 hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                <div className="size-6 flex items-center justify-center">
-                  <svg className="size-6" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 2L2 7v10l10 5 10-5V7L12 2z"
-                      fill="currentColor"
-                    />
-                  </svg>
+                <div className="size-6 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={nearLogo}
+                    alt="NEAR"
+                    className="w-full h-full object-contain invert dark:invert-0"
+                  />
                 </div>
                 <span className="text-sm">
                   {isSigningInWithNear
