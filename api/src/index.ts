@@ -91,7 +91,6 @@ export default createPlugin({
       const orderLayer = OrderStoreLive.pipe(Layer.provide(dbLayer));
 
       console.log('[Marketplace] Plugin initialized');
-      console.log(`[Marketplace] Database: ${config.secrets.DATABASE_URL}`);
       console.log(`[Marketplace] Providers: ${runtime.providers.map((p) => p.name).join(', ') || 'none'}`);
       console.log(`[Marketplace] Stripe: ${stripeService ? 'configured' : 'not configured'}`);
 
