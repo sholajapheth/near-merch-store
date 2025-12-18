@@ -820,33 +820,33 @@ function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-6 bg-muted border border-border p-4 flex items-center justify-between gap-4">
+              <div className="mt-6 bg-muted border border-border p-4 flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4">
                 <span className="text-sm">Apply Discount Code</span>
                 <input
                   type="text"
                   placeholder="Enter Code"
                   value={discountCode}
                   onChange={(e) => setDiscountCode(e.target.value)}
-                  className="bg-background border border-border px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-neutral-950 transition-colors w-60"
+                  className="bg-background border border-border px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-neutral-950 transition-colors w-full sm:w-60"
                 />
               </div>
             </div>
 
             <div className="border border-border p-6 mb-6">
               <div className="flex items-start gap-3">
-                <Checkbox 
-                  id="terms" 
+                <Checkbox
+                  id="terms"
                   checked={acceptedTerms}
                   onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
                   className="mt-0.5"
                 />
-                <label 
-                  htmlFor="terms" 
+                <label
+                  htmlFor="terms"
                   className="text-sm leading-relaxed cursor-pointer select-none"
                 >
                   By checking this box, you agree to our{' '}
-                  <Link 
-                    to="/terms-of-service" 
+                  <Link
+                    to="/terms-of-service"
                     className="underline hover:text-neutral-950 transition-colors"
                   >
                     Terms of Service
