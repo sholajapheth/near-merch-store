@@ -1,7 +1,7 @@
 import { useCart } from '@/hooks/use-cart';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronLeft, CreditCard } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, CreditCard, Check, ChevronsUpDown } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/utils/orpc';
 import { toast } from 'sonner';
@@ -11,110 +11,60 @@ import { NearMark } from '@/components/near-mark';
 import { useForm } from '@tanstack/react-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Country, State } from 'country-state-city';
+import type { IState } from 'country-state-city';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute("/_marketplace/checkout")({
   component: CheckoutPage,
 });
 
-type AddressFormData = {
-  billing: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    country: string;
-    address1: string;
-    address2?: string;
-    city: string;
-    state?: string;
-    zip: string;
-  };
-  shipping?: {
-    firstName: string;
-    lastName: string;
-    country: string;
-    address1: string;
-    address2?: string;
-    city: string;
-    state?: string;
-    zip: string;
-  };
-};
-
-const countryOptions = [
-  { name: 'United States', code: 'US' },
-  { name: 'Canada', code: 'CA' },
-  { name: 'United Kingdom', code: 'GB' },
-  { name: 'Australia', code: 'AU' },
-  { name: 'Germany', code: 'DE' },
-  { name: 'France', code: 'FR' },
-  { name: 'Italy', code: 'IT' },
-  { name: 'Spain', code: 'ES' },
-  { name: 'Netherlands', code: 'NL' },
-  { name: 'Sweden', code: 'SE' },
-  { name: 'Norway', code: 'NO' },
-  { name: 'Finland', code: 'FI' },
-  { name: 'Denmark', code: 'DK' },
-  { name: 'Belgium', code: 'BE' },
-  { name: 'Austria', code: 'AT' },
-  { name: 'Switzerland', code: 'CH' },
-  { name: 'Portugal', code: 'PT' },
-  { name: 'Ireland', code: 'IE' },
-  { name: 'New Zealand', code: 'NZ' },
-  { name: 'Singapore', code: 'SG' },
-  { name: 'Japan', code: 'JP' },
-];
-
-const usStates = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
-  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 
-  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 
-  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
-  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 
-  'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 
-  'Wisconsin', 'Wyoming'
-];
-
-type ShippingQuote = {
-  subtotal: number;
-  shippingCost: number;
-  total: number;
-  currency: string;
-  providerBreakdown: Array<{
-    provider: string;
-    itemCount: number;
-    subtotal: number;
-    selectedShipping: {
-      rateId: string;
-      rateName: string;
-      shippingCost: number;
-      minDeliveryDays?: number;
-      maxDeliveryDays?: number;
-    };
-    availableRates: Array<{
-      rateId: string;
-      rateName: string;
-      shippingCost: number;
-      currency: string;
-      minDeliveryDays?: number;
-      maxDeliveryDays?: number;
-    }>;
-  }>;
-  estimatedDelivery?: {
-    minDays?: number;
-    maxDays?: number;
-  };
-};
+type ShippingQuote = Awaited<ReturnType<typeof apiClient.quote>>;
+type ShippingAddress = Parameters<typeof apiClient.quote>[0]['shippingAddress'];
 
 function CheckoutPage() {
   const { cartItems, subtotal } = useCart();
   const [discountCode, setDiscountCode] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [availableStates, setAvailableStates] = useState<IState[]>([]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [stateOpen, setStateOpen] = useState(false);
   const navigate = useNavigate();
+
+  const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const countries = useMemo(() => Country.getAllCountries(), []);
+
+  useEffect(() => {
+    fieldRefs.current.get('firstName')?.focus();
+  }, []);
+
+  const focusField = (fieldName: string) => {
+    const field = fieldRefs.current.get(fieldName);
+    field?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, nextField: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      focusField(nextField);
+    }
+  };
 
   const shippingCost = shippingQuote?.shippingCost || 0;
   const tax = subtotal * 0.08;
@@ -123,21 +73,17 @@ function CheckoutPage() {
 
   const form = useForm({
     defaultValues: {
-      billing: {
-        firstName: '',
-        lastName: '',
-        email: '',
-        country: '',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zip: '',
-      },
-      shipping: undefined,
-    } as AddressFormData,
+      firstName: '',
+      lastName: '',
+      email: '',
+      country: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postCode: '',
+    } as ShippingAddress,
     onSubmit: async ({ value }) => {
-      // Calculate shipping when form is submitted
       await handleCalculateShipping(value);
     },
   });
@@ -172,20 +118,10 @@ function CheckoutPage() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async (formData: AddressFormData) => {
+    mutationFn: async (formData: ShippingAddress) => {
       if (cartItems.length === 0) throw new Error('Cart is empty');
       if (!shippingQuote) throw new Error('Please calculate shipping first');
 
-      // Use shipping address if provided, otherwise use billing address
-      const addressData = shipToDifferentAddress && formData.shipping
-        ? formData.shipping
-        : formData.billing;
-
-      // Convert country name to 2-letter code
-      const countryMapping = countryOptions.find(c => c.name === addressData.country);
-      const countryCode = countryMapping?.code || 'US';
-
-      // Build selectedRates from quote
       const selectedRates: Record<string, string> = {};
       shippingQuote.providerBreakdown.forEach(provider => {
         selectedRates[provider.provider] = provider.selectedShipping.rateId;
@@ -194,20 +130,10 @@ function CheckoutPage() {
       const result = await apiClient.createCheckout({
         items: cartItems.map((item) => ({
           productId: item.productId,
-          variantId: item.size !== 'N/A' ? item.size : undefined,
+          variantId: item.variantId,
           quantity: item.quantity,
         })),
-        shippingAddress: {
-          firstName: addressData.firstName,
-          lastName: addressData.lastName,
-          addressLine1: addressData.address1,
-          addressLine2: addressData.address2,
-          city: addressData.city,
-          state: addressData.state || '',
-          postCode: addressData.zip,
-          country: countryCode,
-          email: formData.billing.email,
-        },
+        shippingAddress: formData,
         selectedRates,
         shippingCost: shippingQuote.shippingCost,
         successUrl: `${window.location.origin}/order-confirmation`,
@@ -229,36 +155,17 @@ function CheckoutPage() {
     },
   });
 
-  const handleCalculateShipping = async (formData: AddressFormData) => {
+  const handleCalculateShipping = async (formData: ShippingAddress) => {
     setIsCalculatingShipping(true);
-    
-    // Use shipping address if provided, otherwise use billing address
-    const addressData = shipToDifferentAddress && formData.shipping
-      ? formData.shipping
-      : formData.billing;
-
-    // Convert country name to 2-letter code
-    const countryMapping = countryOptions.find(c => c.name === addressData.country);
-    const countryCode = countryMapping?.code || 'US';
 
     try {
       await quoteMutation.mutateAsync({
         items: cartItems.map((item) => ({
           productId: item.productId,
-          variantId: item.size !== 'N/A' ? item.size : undefined,
+          variantId: item.variantId,
           quantity: item.quantity,
         })),
-        shippingAddress: {
-          firstName: addressData.firstName,
-          lastName: addressData.lastName,
-          addressLine1: addressData.address1,
-          addressLine2: addressData.address2,
-          city: addressData.city,
-          state: addressData.state || '',
-          postCode: addressData.zip,
-          country: countryCode,
-          email: formData.billing.email,
-        },
+        shippingAddress: formData,
       });
     } finally {
       setIsCalculatingShipping(false);
@@ -266,7 +173,6 @@ function CheckoutPage() {
   };
 
   const handlePayWithCard = async () => {
-    // Check if user is authenticated before proceeding with checkout
     const { data: session } = await authClient.getSession();
     if (!session?.user) {
       navigate({
@@ -278,44 +184,22 @@ function CheckoutPage() {
       return;
     }
 
-    // Get form values
     const formData = form.state.values;
     
-    // Basic validation
-    if (!formData.billing.firstName || !formData.billing.lastName || 
-        !formData.billing.email || !formData.billing.country || 
-        !formData.billing.address1 || !formData.billing.city || !formData.billing.zip) {
-      toast.error('Please fill in all required billing fields');
+    if (!formData.firstName || !formData.lastName || 
+        !formData.email || !formData.country || 
+        !formData.addressLine1 || !formData.city || !formData.postCode) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    // State is required only for US
-    const countryMapping = countryOptions.find(c => c.name === formData.billing.country);
-    if (countryMapping?.code === 'US' && !formData.billing.state) {
-      toast.error('State is required for US addresses');
+    if (availableStates.length > 0 && !formData.state) {
+      toast.error('State/Province is required for the selected country');
       return;
     }
 
-    if (shipToDifferentAddress) {
-      if (!formData.shipping?.firstName || !formData.shipping?.lastName ||
-          !formData.shipping?.country || !formData.shipping?.address1 ||
-          !formData.shipping?.city || !formData.shipping?.zip) {
-        toast.error('Please fill in all required shipping fields');
-        return;
-      }
-      
-      // State is required only for US shipping addresses
-      const shippingCountryMapping = countryOptions.find(c => c.name === formData.shipping?.country);
-      if (shippingCountryMapping?.code === 'US' && !formData.shipping?.state) {
-        toast.error('State is required for US shipping addresses');
-        return;
-      }
-    }
-
-    // Calculate shipping if not already done
     if (!shippingQuote) {
       await handleCalculateShipping(formData);
-      // Don't proceed to checkout yet, let user review shipping cost
       return;
     }
     
@@ -338,19 +222,15 @@ function CheckoutPage() {
 
       <div className="max-w-[1408px] mx-auto px-4 md:px-8 lg:px-16 py-8">
         <h1 className="text-2xl font-medium mb-8 tracking-[-0.48px]">
-          Checkout
+          Shipping Address
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Left Side - Billing Details Form */}
           <div>
-            <h2 className="text-2xl font-medium mb-6">Billing Details</h2>
-            
             <form className="space-y-4">
-              {/* Name fields */}
               <div className="grid grid-cols-2 gap-4">
                 <form.Field
-                  name="billing.firstName"
+                  name="firstName"
                   children={(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="firstName">
@@ -358,9 +238,14 @@ function CheckoutPage() {
                       </Label>
                       <Input
                         id="firstName"
+                        ref={(el) => {
+                          if (el) fieldRefs.current.set('firstName', el);
+                        }}
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, 'lastName')}
+                        autoComplete="given-name"
                         required
                       />
                     </div>
@@ -368,7 +253,7 @@ function CheckoutPage() {
                 />
                 
                 <form.Field
-                  name="billing.lastName"
+                  name="lastName"
                   children={(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="lastName">
@@ -376,9 +261,14 @@ function CheckoutPage() {
                       </Label>
                       <Input
                         id="lastName"
+                        ref={(el) => {
+                          if (el) fieldRefs.current.set('lastName', el);
+                        }}
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, 'email')}
+                        autoComplete="family-name"
                         required
                       />
                     </div>
@@ -386,137 +276,8 @@ function CheckoutPage() {
                 />
               </div>
 
-              {/* Country/Region */}
               <form.Field
-                name="billing.country"
-                children={(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="country">
-                      Country / Region <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={field.handleChange}
-                    >
-                      <SelectTrigger id="country" className="w-full">
-                        <SelectValue placeholder="Select a country / region..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countryOptions.map((country) => (
-                          <SelectItem key={country.code} value={country.name}>
-                            {country.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              />
-
-              {/* Street address */}
-              <form.Field
-                name="billing.address1"
-                children={(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="address1">
-                      Street address <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="address1"
-                      placeholder="House number and street name"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-              />
-
-              <form.Field
-                name="billing.address2"
-                children={(field) => (
-                  <div>
-                    <Input
-                      placeholder="Apartment, suite, unit, etc. (optional)"
-                      value={field.state.value || ''}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  </div>
-                )}
-              />
-
-              {/* Town / City */}
-              <form.Field
-                name="billing.city"
-                children={(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="city">
-                      Town / City <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="city"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-              />
-
-              {/* State - Only show for US */}
-              {form.state.values.billing.country === 'United States' && (
-                <form.Field
-                  name="billing.state"
-                  children={(field) => (
-                    <div className="space-y-2">
-                      <Label htmlFor="state">
-                        State <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={field.state.value || ''}
-                        onValueChange={field.handleChange}
-                      >
-                        <SelectTrigger id="state" className="w-full">
-                          <SelectValue placeholder="Select a state..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {usStates.map((state) => (
-                            <SelectItem key={state} value={state}>
-                              {state}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                />
-              )}
-
-              {/* ZIP Code */}
-              <form.Field
-                name="billing.zip"
-                children={(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="zip">
-                      ZIP Code <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="zip"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-              />
-
-              {/* Email */}
-              <form.Field
-                name="billing.email"
+                name="email"
                 children={(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="email">
@@ -525,194 +286,261 @@ function CheckoutPage() {
                     <Input
                       id="email"
                       type="email"
+                      ref={(el) => {
+                        if (el) fieldRefs.current.set('email', el);
+                      }}
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'addressLine1')}
+                      autoComplete="email"
                       required
                     />
                   </div>
                 )}
               />
 
-              {/* Ship to Different Address */}
-              <div className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="shipToDifferent"
-                    checked={shipToDifferentAddress}
-                    onCheckedChange={(checked) => setShipToDifferentAddress(checked as boolean)}
-                  />
-                  <Label htmlFor="shipToDifferent" className="text-lg font-semibold text-blue-600 cursor-pointer">
-                    Ship To A Different Address?
-                  </Label>
-                </div>
-              </div>
-
-              {/* Shipping Address Form (Conditional) */}
-              {shipToDifferentAddress && (
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-xl font-medium">Shipping Address</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <form.Field
-                      name="shipping.firstName"
-                      children={(field) => (
-                        <div className="space-y-2">
-                          <Label htmlFor="shippingFirstName">
-                            First name <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="shippingFirstName"
-                            value={field.state.value || ''}
-                            onBlur={field.handleBlur}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                          />
-                        </div>
-                      )}
-                    />
-                    
-                    <form.Field
-                      name="shipping.lastName"
-                      children={(field) => (
-                        <div className="space-y-2">
-                          <Label htmlFor="shippingLastName">
-                            Last name <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="shippingLastName"
-                            value={field.state.value || ''}
-                            onBlur={field.handleBlur}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                          />
-                        </div>
-                      )}
+              <form.Field
+                name="addressLine1"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="addressLine1">
+                      Street address <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="addressLine1"
+                      ref={(el) => {
+                        if (el) fieldRefs.current.set('addressLine1', el);
+                      }}
+                      placeholder="House number and street name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'addressLine2')}
+                      autoComplete="address-line1"
+                      required
                     />
                   </div>
+                )}
+              />
 
-                  <form.Field
-                    name="shipping.country"
-                    children={(field) => (
-                      <div className="space-y-2">
-                        <Label htmlFor="shippingCountry">
-                          Country / Region <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          value={field.state.value || ''}
-                          onValueChange={field.handleChange}
-                        >
-                          <SelectTrigger id="shippingCountry" className="w-full">
-                            <SelectValue placeholder="Select a country / region..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {countryOptions.map((country) => (
-                              <SelectItem key={country.code} value={country.name}>
-                                {country.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  />
-
-                  <form.Field
-                    name="shipping.address1"
-                    children={(field) => (
-                      <div className="space-y-2">
-                        <Label htmlFor="shippingAddress1">
-                          Street address <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="shippingAddress1"
-                          placeholder="House number and street name"
-                          value={field.state.value || ''}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  />
-
-                  <form.Field
-                    name="shipping.address2"
-                    children={(field) => (
-                      <div>
-                        <Input
-                          placeholder="Apartment, suite, unit, etc. (optional)"
-                          value={field.state.value || ''}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  />
-
-                  <form.Field
-                    name="shipping.city"
-                    children={(field) => (
-                      <div className="space-y-2">
-                        <Label htmlFor="shippingCity">
-                          Town / City <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="shippingCity"
-                          value={field.state.value || ''}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  />
-
-                  {/* State - Only show for US */}
-                  {form.state.values.shipping?.country === 'United States' && (
-                    <form.Field
-                      name="shipping.state"
-                      children={(field) => (
-                        <div className="space-y-2">
-                          <Label htmlFor="shippingState">
-                            State <span className="text-red-500">*</span>
-                          </Label>
-                          <Select
-                            value={field.state.value || ''}
-                            onValueChange={field.handleChange}
-                          >
-                            <SelectTrigger id="shippingState" className="w-full">
-                              <SelectValue placeholder="Select a state..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {usStates.map((state) => (
-                                <SelectItem key={state} value={state}>
-                                  {state}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+              <form.Field
+                name="addressLine2"
+                children={(field) => (
+                  <div>
+                    <Input
+                      ref={(el) => {
+                        if (el) fieldRefs.current.set('addressLine2', el);
+                      }}
+                      placeholder="Apartment, suite, unit, etc. (optional)"
+                      value={field.state.value || ''}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'city')}
+                      autoComplete="address-line2"
                     />
-                  )}
+                  </div>
+                )}
+              />
 
+              <form.Field
+                name="city"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="city">
+                      Town / City <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="city"
+                      ref={(el) => {
+                        if (el) fieldRefs.current.set('city', el);
+                      }}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'country')}
+                      autoComplete="address-level2"
+                      required
+                    />
+                  </div>
+                )}
+              />
+
+              <form.Field
+                name="country"
+                listeners={{
+                  onChange: ({ value }) => {
+                    if (value) {
+                      const states = State.getStatesOfCountry(value);
+                      setAvailableStates(states);
+                      form.setFieldValue('state', '');
+                      if (states.length > 0) {
+                        setTimeout(() => focusField('state'), 100);
+                      } else {
+                        setTimeout(() => focusField('postCode'), 100);
+                      }
+                    } else {
+                      setAvailableStates([]);
+                      form.setFieldValue('state', '');
+                    }
+                  },
+                }}
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="country">
+                      Country / Region <span className="text-red-500">*</span>
+                    </Label>
+                    <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          ref={(el) => {
+                            if (el) fieldRefs.current.set('country', el);
+                          }}
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={countryOpen}
+                          className="w-full justify-between font-normal"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setCountryOpen(true);
+                            }
+                          }}
+                        >
+                          {field.state.value
+                            ? countries.find((c) => c.isoCode === field.state.value)?.flag + ' ' +
+                              countries.find((c) => c.isoCode === field.state.value)?.name
+                            : "Select a country / region..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent side="bottom" align="start" className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search country..." autoFocus />
+                          <CommandList>
+                            <CommandEmpty>No country found.</CommandEmpty>
+                            <CommandGroup>
+                              {countries.map((country) => (
+                                <CommandItem
+                                  key={country.isoCode}
+                                  value={country.name}
+                                  onSelect={() => {
+                                    field.handleChange(country.isoCode);
+                                    setCountryOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.state.value === country.isoCode ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {country.flag} {country.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                {availableStates.length > 0 && (
                   <form.Field
-                    name="shipping.zip"
+                    name="state"
+                    listeners={{
+                      onChange: () => {
+                        setTimeout(() => focusField('postCode'), 100);
+                      },
+                    }}
                     children={(field) => (
                       <div className="space-y-2">
-                        <Label htmlFor="shippingZip">
-                          ZIP Code <span className="text-red-500">*</span>
+                        <Label htmlFor="state">
+                          State / Province <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          id="shippingZip"
-                          value={field.state.value || ''}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
+                        <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              ref={(el) => {
+                                if (el) fieldRefs.current.set('state', el);
+                              }}
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={stateOpen}
+                              className="w-full justify-between font-normal"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setStateOpen(true);
+                                }
+                              }}
+                            >
+                              {field.state.value
+                                ? availableStates.find((s) => s.isoCode === field.state.value)?.name
+                                : "Select a state..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent side="bottom" align="start" className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search state..." autoFocus />
+                              <CommandList>
+                                <CommandEmpty>No state found.</CommandEmpty>
+                                <CommandGroup>
+                                  {availableStates.map((state) => (
+                                    <CommandItem
+                                      key={state.isoCode}
+                                      value={state.name}
+                                      onSelect={() => {
+                                        field.handleChange(state.isoCode);
+                                        setStateOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.state.value === state.isoCode ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {state.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     )}
                   />
-                </div>
-              )}
+                )}
 
-              {/* Calculate Shipping Button */}
+                <form.Field
+                  name="postCode"
+                  children={(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="postCode">
+                        ZIP / Postal Code <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="postCode"
+                        ref={(el) => {
+                          if (el) fieldRefs.current.set('postCode', el);
+                        }}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        autoComplete="postal-code"
+                        required
+                      />
+                    </div>
+                  )}
+                />
+              </div>
+
               <div className="pt-6">
                 <button
                   type="button"
@@ -740,7 +568,6 @@ function CheckoutPage() {
             </form>
           </div>
 
-          {/* Right Side - Order Summary and Payment */}
           <div>
             <div className="border border-[rgba(0,0,0,0.1)] p-8 mb-6">
               <div className="mb-6">

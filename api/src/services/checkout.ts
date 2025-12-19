@@ -190,12 +190,12 @@ export const CheckoutServiceLive = (runtime: MarketplaceRuntime) =>
                     items: fulfillmentItems,
                     currency,
                   }),
-                catch: (error) =>
-                  new Error(
-                    `Failed to get quote from ${providerName}: ${
-                      error instanceof Error ? error.message : String(error)
-                    }`
-                  ),
+                catch: (error) => {
+                  if (error instanceof Error) {
+                    return new Error(error.message);
+                  }
+                  return new Error(`Failed to get quote from ${providerName}: ${String(error)}`);
+                },
               });
 
               const rates = quoteResult.rates || [];

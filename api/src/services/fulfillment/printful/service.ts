@@ -1,4 +1,4 @@
-import { Effect } from 'every-plugin/effect';
+import { Effect, Schedule } from 'every-plugin/effect';
 import crypto from 'crypto';
 import { 
   CatalogItem, 
@@ -30,6 +30,7 @@ import {
   type MockupResult
 } from './types';
 import { PrintfulClient } from './client';
+import { FulfillmentError } from '../errors';
 
 export class PrintfulService {
   private client: PrintfulClient;
@@ -180,8 +181,31 @@ export class PrintfulService {
         });
 
         if (!response.ok) {
-          const errorBody = await response.text();
-          throw new Error(`Printful shipping rates failed: ${response.status} - ${errorBody}`);
+          let errorMessage = `Printful API returned ${response.status}`;
+          
+          try {
+            const errorData = await response.json() as { 
+              error?: { message?: string; code?: string }; 
+              message?: string;
+            };
+            
+            if (errorData.error?.message) {
+              errorMessage = errorData.error.message;
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = `${errorMessage}: ${errorText.substring(0, 200)}`;
+            }
+          }
+
+          throw FulfillmentError.fromHttpStatus(
+            response.status,
+            'printful',
+            errorMessage
+          );
         }
 
         const data = await response.json() as { data: Array<{
@@ -211,8 +235,24 @@ export class PrintfulService {
 
         return transformedResult;
       },
-      catch: (e) => new Error(`Failed to calculate shipping rates: ${e instanceof Error ? e.message : String(e)}`),
-    });
+      catch: (error) => {
+        if (error instanceof FulfillmentError) {
+          return error;
+        }
+        return new FulfillmentError({
+          message: `Failed to calculate shipping rates: ${error instanceof Error ? error.message : String(error)}`,
+          code: 'UNKNOWN',
+          provider: 'printful',
+          cause: error,
+        });
+      },
+    }).pipe(
+      Effect.retry({
+        times: 3,
+        schedule: Schedule.exponential('100 millis'),
+        while: (error) => error instanceof FulfillmentError && error.isRetryable,
+      })
+    );
   }
 
   quoteOrder(input: ShippingQuoteInput): Effect.Effect<ShippingQuoteOutput, Error> {
